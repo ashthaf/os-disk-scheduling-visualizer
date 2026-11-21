@@ -1,0 +1,863 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>OS Scheduling Visualizer</title>
+<style>
+* {
+    box-sizing: border-box;
+}
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #eef2f7;
+    color: #222;
+}
+header {
+    background: #172c4d;
+    color: white;
+    padding: 25px;
+    text-align: center;
+}
+header p {
+    color: #d5e1f0;
+}
+.container {
+    max-width: 1200px;
+    margin: auto;
+    padding: 20px;
+}
+nav {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px 0;
+}
+nav button {
+    width: auto;
+    padding: 12px 25px;
+}
+.card {
+    background: white;
+    padding: 22px;
+    margin: 20px 0;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px #ccc;
+}
+h2 {
+    color: #172c4d;
+}
+.inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+    gap: 15px;
+}
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 6px;
+}
+input, select, button {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+button {
+    background: #234b7c;
+    color: white;
+    cursor: pointer;
+    border: none;
+    margin-top: 10px;
+}
+button:hover {
+    background: #3868a1;
+}
+.controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.controls button {
+    flex: 1;
+    min-width: 100px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+}
+th, td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ddd;
+}
+th {
+    background: #234b7c;
+    color: white;
+}
+canvas {
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+.bar {
+    margin: 15px 0;
+}
+.bar span {
+    display: block;
+    background: #3974c5;
+    color: white;
+    padding: 8px;
+    border-radius: 5px;
+    min-width: 50px;
+}
+.gantt {
+    display: flex;
+    overflow-x: auto;
+    margin-top: 25px;
+    padding-bottom: 15px;
+}
+.gantt-item {
+    min-width: 65px;
+    text-align: center;
+    border: 1px solid white;
+    color: white;
+    padding: 12px 5px;
+}
+.gantt-item.idle {
+    background: #888;
+}
+.time-labels {
+    display: flex;
+    overflow-x: auto;
+}
+.time-labels div {
+    min-width: 65px;
+    text-align: center;
+    font-size: 12px;
+}
+.hidden {
+    display: none;
+}
+@media(max-width:600px) {
+    .container {
+        padding: 10px;
+    }
+    .card {
+        padding: 15px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>OS Scheduling Visualizer</h1>
+<p>Interactive Disk and CPU Scheduling Simulator</p>
+</header>
+
+<div class="container">
+
+<nav>
+<button onclick="showSection('disk')">Disk Scheduling</button>
+<button onclick="showSection('cpu')">CPU Scheduling</button>
+</nav>
+
+<!-- DISK SCHEDULING -->
+
+<section id="disk">
+
+<div class="card">
+<h2>Part A: Disk Scheduling</h2>
+
+<div class="inputs">
+<div>
+<label>Disk Size</label>
+<input type="number" id="diskSize" value="200" min="2">
+</div>
+
+<div>
+<label>Initial Head Position</label>
+<input type="number" id="head" value="50">
+</div>
+
+<div>
+<label>Request Queue</label>
+<input type="text" id="queue" value="82,170,43,140,24,16,190">
+</div>
+
+<div>
+<label>Direction</label>
+<select id="direction">
+<option value="right">Right (Higher)</option>
+<option value="left">Left (Lower)</option>
+</select>
+</div>
+</div>
+
+<button onclick="runDisk()">Run Disk Algorithms</button>
+<p id="diskMsg"></p>
+</div>
+
+<div class="card">
+<h2>Disk Seek Visualization</h2>
+
+<label>Select Algorithm</label>
+<select id="diskAlgo" onchange="selectDiskAlgo()">
+<option>FCFS</option>
+<option>SSTF</option>
+<option>SCAN</option>
+<option>C-SCAN</option>
+<option>LOOK</option>
+</select>
+
+<div class="controls">
+<button onclick="diskPrev()">Previous</button>
+<button onclick="diskNext()">Next</button>
+<button onclick="diskPlay()">Auto Play</button>
+<button onclick="diskStop()">Stop</button>
+</div>
+
+<p id="diskSequence"></p>
+<p id="diskMovement"></p>
+
+<canvas id="diskCanvas" width="1000" height="350"></canvas>
+</div>
+
+<div class="card">
+<h2>Disk Algorithm Comparison</h2>
+<div id="diskCompare"></div>
+</div>
+
+</section>
+
+<!-- CPU SCHEDULING -->
+
+<section id="cpu" class="hidden">
+
+<div class="card">
+<h2>Part B: CPU Scheduling</h2>
+
+<p>Enter process details separated by commas. Each row represents one process.</p>
+
+<div class="inputs">
+<div>
+<label>Process IDs</label>
+<input id="pidInput" value="P1,P2,P3,P4">
+</div>
+
+<div>
+<label>Arrival Times</label>
+<input id="arrivalInput" value="0,1,2,3">
+</div>
+
+<div>
+<label>Burst Times</label>
+<input id="burstInput" value="5,3,8,6">
+</div>
+
+<div>
+<label>Time Quantum (Round Robin)</label>
+<input type="number" id="quantum" value="2" min="1">
+</div>
+</div>
+
+<div class="controls">
+<button onclick="runCPU('FCFS')">Run FCFS</button>
+<button onclick="runCPU('RR')">Run Round Robin</button>
+</div>
+
+<p id="cpuMsg"></p>
+</div>
+
+<div class="card">
+<h2>CPU Gantt Chart</h2>
+
+<p id="cpuAlgoName"></p>
+
+<div class="controls">
+<button onclick="cpuPrev()">Previous</button>
+<button onclick="cpuNext()">Next</button>
+<button onclick="cpuPlay()">Auto Play</button>
+<button onclick="cpuStop()">Stop</button>
+</div>
+
+<div id="ganttChart" class="gantt"></div>
+<div id="ganttTimes" class="time-labels"></div>
+
+<p id="cpuStep"></p>
+</div>
+
+<div class="card">
+<h2>Process Performance Table</h2>
+<div id="cpuTable"></div>
+</div>
+
+<div class="card">
+<h2>CPU Scheduling Statistics</h2>
+<p id="cpuStats"></p>
+</div>
+
+</section>
+
+</div>
+
+<script>
+
+// SECTION SWITCHING
+
+function showSection(section) {
+    document.getElementById("disk").classList.toggle("hidden",section!=="disk");
+    document.getElementById("cpu").classList.toggle("hidden",section!=="cpu");
+}
+
+// DISK SCHEDULING
+
+let diskResults = {};
+let diskPath = [];
+let diskStep = 0;
+let diskTimer = null;
+
+function diskInput() {
+    let size = Number(document.getElementById("diskSize").value);
+    let head = Number(document.getElementById("head").value);
+    let queue = document.getElementById("queue").value
+        .split(",").map(x=>x.trim()).map(Number);
+    let direction = document.getElementById("direction").value;
+
+    if(!Number.isInteger(size) || size<2) {
+        alert("Enter a valid disk size.");
+        return null;
+    }
+
+    if(!Number.isInteger(head) || head<0 || head>=size) {
+        alert("Invalid initial head position.");
+        return null;
+    }
+
+    if(queue.length===0 || queue.some(x=>!Number.isInteger(x))) {
+        alert("Enter a valid request queue.");
+        return null;
+    }
+
+    if(queue.some(x=>x<0 || x>=size)) {
+        alert("Requests must be within the disk range.");
+        return null;
+    }
+
+    return {size,head,queue,direction};
+}
+
+function diskCalculate(name,head,queue,size,direction) {
+    let path = [head];
+    let q = [...queue];
+
+    if(name==="FCFS") {
+        path = path.concat(q);
+    }
+
+    if(name==="SSTF") {
+        while(q.length) {
+            let best = 0;
+
+            for(let i=1;i<q.length;i++) {
+                if(Math.abs(head-q[i])<Math.abs(head-q[best])) {
+                    best=i;
+                }
+            }
+
+            head=q.splice(best,1)[0];
+            path.push(head);
+        }
+    }
+
+    if(name==="SCAN" || name==="C-SCAN" || name==="LOOK") {
+        let left=q.filter(x=>x<head).sort((a,b)=>b-a);
+        let right=q.filter(x=>x>=head).sort((a,b)=>a-b);
+
+        if(direction==="right") {
+            if(name==="LOOK") path=path.concat(right,left);
+            if(name==="SCAN") path=path.concat(right,size-1,left);
+            if(name==="C-SCAN") path=path.concat(right,size-1,0,left);
+        }
+        else {
+            if(name==="LOOK") path=path.concat(left,right);
+            if(name==="SCAN") path=path.concat(left,0,right);
+            if(name==="C-SCAN") path=path.concat(left,0,size-1,right);
+        }
+    }
+
+    path=path.filter((x,i)=>i===0 || x!==path[i-1]);
+
+    let movement=0;
+
+    for(let i=1;i<path.length;i++) {
+        movement+=Math.abs(path[i]-path[i-1]);
+    }
+
+    return {path,movement};
+}
+
+function runDisk() {
+    let data=diskInput();
+    if(!data) return;
+
+    diskResults={};
+
+    let algorithms=["FCFS","SSTF","SCAN","C-SCAN","LOOK"];
+
+    algorithms.forEach(name=>{
+        diskResults[name]=diskCalculate(
+            name,data.head,data.queue,data.size,data.direction
+        );
+    });
+
+    document.getElementById("diskMsg").innerText=
+        "All disk algorithms calculated successfully.";
+
+    diskComparison();
+    selectDiskAlgo();
+}
+
+function diskComparison() {
+    let html="";
+    let max=Math.max(...Object.values(diskResults).map(x=>x.movement));
+
+    for(let name in diskResults) {
+        let movement=diskResults[name].movement;
+
+        html+=`
+        <div class="bar">
+        <b>${name} : ${movement} cylinders</b>
+        <span style="width:${Math.max(5,movement/max*100)}%">
+        ${movement}
+        </span>
+        </div>`;
+    }
+
+    document.getElementById("diskCompare").innerHTML=html;
+}
+
+function selectDiskAlgo() {
+    let name=document.getElementById("diskAlgo").value;
+    if(!diskResults[name]) return;
+
+    diskPath=diskResults[name].path;
+    diskStep=diskPath.length-1;
+    diskUpdate();
+}
+
+function diskUpdate() {
+    let path=diskPath.slice(0,diskStep+1);
+
+    document.getElementById("diskSequence").innerHTML=
+        "<b>Seek Sequence:</b> "+path.join(" → ");
+
+    let movement=0;
+
+    for(let i=1;i<path.length;i++) {
+        movement+=Math.abs(path[i]-path[i-1]);
+    }
+
+    document.getElementById("diskMovement").innerHTML=
+        "<b>Total Movement so far:</b> "+movement+" cylinders";
+
+    diskDraw();
+}
+
+function diskDraw() {
+    let canvas=document.getElementById("diskCanvas");
+    let ctx=canvas.getContext("2d");
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    let data=diskInput();
+    if(!data) return;
+
+    let path=diskPath.slice(0,diskStep+1);
+    if(!path.length) return;
+
+    let pad=60;
+    let max=data.size-1;
+
+    function x(i) {
+        return pad+i*(canvas.width-2*pad)/Math.max(1,path.length-1);
+    }
+
+    function y(v) {
+        return canvas.height-pad-v/max*(canvas.height-2*pad);
+    }
+
+    ctx.strokeStyle="#aaa";
+    ctx.beginPath();
+    ctx.moveTo(pad,pad);
+    ctx.lineTo(pad,canvas.height-pad);
+    ctx.lineTo(canvas.width-pad,canvas.height-pad);
+    ctx.stroke();
+
+    ctx.fillStyle="#222";
+    ctx.font="13px Arial";
+    ctx.fillText("Cylinder "+max,5,pad);
+    ctx.fillText("Cylinder 0",5,canvas.height-pad);
+
+    ctx.strokeStyle="#3974c5";
+    ctx.lineWidth=3;
+    ctx.beginPath();
+
+    path.forEach((v,i)=>{
+        if(i===0) ctx.moveTo(x(i),y(v));
+        else ctx.lineTo(x(i),y(v));
+    });
+
+    ctx.stroke();
+
+    path.forEach((v,i)=>{
+        ctx.fillStyle="#e04f5f";
+        ctx.beginPath();
+        ctx.arc(x(i),y(v),5,0,Math.PI*2);
+        ctx.fill();
+
+        ctx.fillStyle="#222";
+        ctx.font="12px Arial";
+        ctx.fillText(v,x(i)+5,y(v)-10);
+    });
+}
+
+function diskNext() {
+    if(diskStep<diskPath.length-1) {
+        diskStep++;
+        diskUpdate();
+    }
+}
+
+function diskPrev() {
+    if(diskStep>0) {
+        diskStep--;
+        diskUpdate();
+    }
+}
+
+function diskPlay() {
+    diskStop();
+
+    if(diskStep>=diskPath.length-1) {
+        diskStep=0;
+        diskUpdate();
+    }
+
+    diskTimer=setInterval(()=>{
+        if(diskStep<diskPath.length-1) {
+            diskStep++;
+            diskUpdate();
+        } else diskStop();
+    },700);
+}
+
+function diskStop() {
+    clearInterval(diskTimer);
+}
+
+// CPU SCHEDULING
+
+let cpuSegments=[];
+let cpuStepIndex=0;
+let cpuTimer=null;
+let cpuProcesses=[];
+
+function getProcesses() {
+    let ids=document.getElementById("pidInput").value
+        .split(",").map(x=>x.trim());
+
+    let arrivals=document.getElementById("arrivalInput").value
+        .split(",").map(x=>x.trim()).map(Number);
+
+    let bursts=document.getElementById("burstInput").value
+        .split(",").map(x=>x.trim()).map(Number);
+
+    if(!ids.length || ids.some(x=>!x)) {
+        alert("Enter valid process IDs.");
+        return null;
+    }
+
+    if(ids.length!==arrivals.length || ids.length!==bursts.length) {
+        alert("IDs, arrival times and burst times must have equal lengths.");
+        return null;
+    }
+
+    if(new Set(ids).size!==ids.length) {
+        alert("Process IDs must be unique.");
+        return null;
+    }
+
+    if(arrivals.some(x=>!Number.isInteger(x)||x<0) ||
+       bursts.some(x=>!Number.isInteger(x)||x<=0)) {
+        alert("Arrival times must be 0 or more and burst times greater than 0.");
+        return null;
+    }
+
+    return ids.map((id,i)=>({
+        id,
+        arrival:arrivals[i],
+        burst:bursts[i],
+        remaining:bursts[i],
+        completion:0,
+        waiting:0,
+        turnaround:0
+    }));
+}
+
+function cpuFCFS(processes) {
+    let sorted=[...processes].sort((a,b)=>a.arrival-b.arrival);
+    let time=0;
+    let segments=[];
+
+    for(let p of sorted) {
+        if(time<p.arrival) {
+            segments.push({id:"Idle",start:time,end:p.arrival});
+            time=p.arrival;
+        }
+
+        let start=time;
+        time+=p.burst;
+
+        segments.push({id:p.id,start,end:time});
+        p.completion=time;
+    }
+
+    return segments;
+}
+
+function cpuRR(processes,quantum) {
+    let sorted=[...processes].sort((a,b)=>a.arrival-b.arrival);
+    let segments=[];
+    let queue=[];
+    let time=0;
+    let index=0;
+
+    while(index<sorted.length || queue.length>0) {
+
+        if(queue.length===0 && index<sorted.length) {
+            if(time<sorted[index].arrival) {
+                segments.push({
+                    id:"Idle",
+                    start:time,
+                    end:sorted[index].arrival
+                });
+                time=sorted[index].arrival;
+            }
+
+            while(index<sorted.length && sorted[index].arrival<=time) {
+                queue.push(sorted[index]);
+                index++;
+            }
+        }
+
+        if(queue.length===0) continue;
+
+        let p=queue.shift();
+        let start=time;
+        let run=Math.min(quantum,p.remaining);
+
+        time+=run;
+        p.remaining-=run;
+
+        segments.push({id:p.id,start,end:time});
+
+        while(index<sorted.length && sorted[index].arrival<=time) {
+            queue.push(sorted[index]);
+            index++;
+        }
+
+        if(p.remaining>0) {
+            queue.push(p);
+        } else {
+            p.completion=time;
+        }
+    }
+
+    return segments;
+}
+
+function runCPU(algorithm) {
+    cpuStop();
+
+    let processes=getProcesses();
+    if(!processes) return;
+
+    if(algorithm==="RR") {
+        let quantum=Number(document.getElementById("quantum").value);
+
+        if(!Number.isInteger(quantum)||quantum<=0) {
+            alert("Time quantum must be a positive integer.");
+            return;
+        }
+
+        cpuSegments=cpuRR(processes,quantum);
+    }
+    else {
+        cpuSegments=cpuFCFS(processes);
+    }
+
+    processes.forEach(p=>{
+        p.turnaround=p.completion-p.arrival;
+        p.waiting=p.turnaround-p.burst;
+    });
+
+    cpuProcesses=processes;
+    cpuStepIndex=cpuSegments.length-1;
+
+    document.getElementById("cpuAlgoName").innerText=
+        "Algorithm: "+(algorithm==="RR"?"Round Robin":"FCFS");
+
+    document.getElementById("cpuMsg").innerText=
+        "CPU scheduling calculated successfully.";
+
+    cpuRender();
+    cpuMetrics();
+}
+
+function cpuRender() {
+    let visible = cpuSegments.slice(0, cpuStepIndex + 1);
+
+    let chart = document.getElementById("ganttChart");
+    let times = document.getElementById("ganttTimes");
+
+    chart.innerHTML = "";
+    times.innerHTML = "";
+
+    let colors = [
+        "#3974c5",
+        "#e67e22",
+        "#27ae60",
+        "#9b59b6",
+        "#e74c3c",
+        "#16a085",
+        "#34495e",
+        "#f1c40f"
+    ];
+
+    visible.forEach(segment => {
+        let div = document.createElement("div");
+
+        div.className = "gantt-item";
+
+        if (segment.id === "Idle") {
+            div.classList.add("idle");
+        } else {
+            let index = cpuProcesses.findIndex(p => p.id === segment.id);
+            div.style.background = colors[index % colors.length];
+        }
+
+        div.innerText = segment.id;
+        chart.appendChild(div);
+
+        let label = document.createElement("div");
+        label.innerText = segment.start;
+        times.appendChild(label);
+    });
+
+    if (visible.length) {
+        let label = document.createElement("div");
+        label.innerText = visible[visible.length - 1].end;
+        times.appendChild(label);
+    }
+
+    document.getElementById("cpuStep").innerText =
+        "Step " + (cpuStepIndex + 1) + " of " + cpuSegments.length;
+
+    cpuTableRender();
+}
+
+function cpuTableRender() {
+    let visible=cpuSegments.slice(0,cpuStepIndex+1);
+    let completedIds=visible.filter(x=>x.id!=="Idle").map(x=>x.id);
+    let completed=new Set();
+
+    cpuProcesses.forEach(p=>{
+        if(completedIds.includes(p.id)) {
+            let last=visible.filter(x=>x.id===p.id);
+            if(last.length && last[last.length-1].end===p.completion) {
+                completed.add(p.id);
+            }
+        }
+    });
+
+    let html=`<table>
+    <tr>
+    <th>Process</th>
+    <th>Arrival</th>
+    <th>Burst</th>
+    <th>Completion</th>
+    <th>Turnaround</th>
+    <th>Waiting</th>
+    </tr>`;
+
+    cpuProcesses.forEach(p=>{
+        let done=completed.has(p.id);
+
+        html+=`<tr>
+        <td>${p.id}</td>
+        <td>${p.arrival}</td>
+        <td>${p.burst}</td>
+        <td>${done?p.completion:"-"}</td>
+        <td>${done?p.turnaround:"-"}</td>
+        <td>${done?p.waiting:"-"}</td>
+        </tr>`;
+    });
+
+    html+="</table>";
+
+    document.getElementById("cpuTable").innerHTML=html;
+}
+
+function cpuMetrics() {
+    let avgWait=cpuProcesses.reduce((s,p)=>s+p.waiting,0)/cpuProcesses.length;
+    let avgTurn=cpuProcesses.reduce((s,p)=>s+p.turnaround,0)/cpuProcesses.length;
+
+    document.getElementById("cpuStats").innerHTML=
+        "<b>Average Waiting Time:</b> "+avgWait.toFixed(2)+"<br><br>"+
+        "<b>Average Turnaround Time:</b> "+avgTurn.toFixed(2);
+}
+
+function cpuNext() {
+    if(cpuStepIndex<cpuSegments.length-1) {
+        cpuStepIndex++;
+        cpuRender();
+    }
+}
+
+function cpuPrev() {
+    if(cpuStepIndex>0) {
+        cpuStepIndex--;
+        cpuRender();
+    }
+}
+
+function cpuPlay() {
+    cpuStop();
+
+    if(cpuStepIndex>=cpuSegments.length-1) {
+        cpuStepIndex=0;
+        cpuRender();
+    }
+
+    cpuTimer=setInterval(()=>{
+        if(cpuStepIndex<cpuSegments.length-1) {
+            cpuStepIndex++;
+            cpuRender();
+        } else cpuStop();
+    },700);
+}
+
+function cpuStop() {
+    clearInterval(cpuTimer);
+}
+
+</script>
+
+</body>
+</html>
